@@ -3,7 +3,7 @@ import argparse
 import cPickle
 from selektor import data
 
-logger = logging.getLogger("selektor")
+logger = logging.getLogger("selektor.train")
 
 
 if __name__=="__main__":    

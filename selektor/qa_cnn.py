@@ -59,8 +59,10 @@ class QALeNetConvPoolLayer(object):
         self.b = theano.shared(value=b_values, borrow=True, name="b_conv")
         
         # convolve input feature maps with filters
+
         lconv_out = conv.conv2d(input=linp, filters=self.W)
         rconv_out = conv.conv2d(input=rinp, filters=self.W)
+
         lconv_out_tanh = T.tanh(lconv_out + self.b.dimshuffle('x', 0, 'x', 'x'))
         rconv_out_tanh = T.tanh(rconv_out + self.b.dimshuffle('x', 0, 'x', 'x'))
         self.loutput = downsample.max_pool_2d(input=lconv_out_tanh, ds=self.poolsize, ignore_border=True, mode="average_exc_pad")
@@ -113,7 +115,7 @@ class BilinearLR(object):
             self.W = W
 
         if b is None:
-            self.b = theano.shared(value=0., name='b')
+            self.b = theano.shared(value=np.float32(0.), name='b')
         else:
             self.b = b
 
@@ -129,7 +131,7 @@ class BilinearLR(object):
 
     def get_cost(self, y):
         # cross-entropy loss
-        L = - T.mean(y * T.log(self.p_y_given_x) + (1 - y) * T.log(1 - self.p_y_given_x))
+        L = - T.cast(T.mean(y * T.log(self.p_y_given_x) + (1 - y) * T.log(1 - self.p_y_given_x)), theano.config.floatX)
         return L
 
 
@@ -241,7 +243,7 @@ def train_qacnn(datasets,
     test_llayer1_input = T.concatenate(test_lpred_layers, 1)
     test_rlayer1_input = T.concatenate(test_rpred_layers, 1)
     test_y_pred = classifier.predict(test_llayer1_input, test_rlayer1_input)
-    test_model = theano.function([lx, rx], test_y_pred)   
+    test_model = theano.function([lx, rx], test_y_pred, allow_input_downcast=True)   
 
     #start training over mini-batches
     print '... training'

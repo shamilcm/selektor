@@ -16,11 +16,13 @@ def tuning_cnn(revs, wordvecs, max_l=40, dev_refname=None, test_refname=None, de
     # tuning parameters
     n_epoch = 5
     n_feature_maps = 50
-    filter_hs = [2]
-    filter_h = max(filter_hs)
+    filter_hs = [2]            # @shamil: List of filters. Default case is just 1 with size 2
+    filter_h = max(filter_hs)  # @shamil: Max filter size. Default case is 2
     lam = 0.0
 
+    # convert data into matrices
     datasets = make_cnn_data(revs, wordvecs.word_idx_map, max_l=max_l, filter_h=filter_h)
+    
     train_preds_epos, dev_preds_epos, test_preds_epos = train_qacnn(datasets, U=wordvecs.W, filter_hs=filter_hs, hidden_units=[n_feature_maps,2], shuffle_batch=False, n_epochs=n_epoch, lam=lam, batch_size=20, lr_decay = 0.95, sqr_norm_lim=9)
 
     results, trigger_results = [], []
@@ -143,9 +145,9 @@ def make_lr_data(revs, train_preds, dev_preds, test_preds):
             test.append(feat)
             test_y.append(atri[1])
             test_id.append((qid, atri[0]))
-    train = np.array(train,dtype="float")
-    dev = np.array(dev,dtype="float")
-    test = np.array(test,dtype="float")
+    train = np.array(train,dtype="float32")
+    dev = np.array(dev,dtype="float32")
+    test = np.array(test,dtype="float32")
     train_y = np.array(train_y,dtype="int")
     dev_y = np.array(dev_y,dtype="int")
     test_y = np.array(test_y,dtype="int")
@@ -212,7 +214,10 @@ def calc_trigger_fscore(preds, thre=0.1):
         if sorted_gt[0][1] == 1:
             gt_cnt += 1.0
     prec, reca = match_cnt / pred_cnt, match_cnt / gt_cnt
-    return prec, reca, 2*prec*reca / (prec+reca)
+    if prec+reca == 0:
+        return prec, reca, 0
+    else:
+        return prec, reca, 2*prec*reca / (prec+reca)
 
 
 def create_pred(preds, alfname, ofname, qcol=0, acol=2):
@@ -237,28 +242,3 @@ def create_pred(preds, alfname, ofname, qcol=0, acol=2):
     of.close()
 
 
-if __name__=="__main__":
-    logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
-    logger.info('begin logging')
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("dataset", help="pkl file for dataset")
-    parser.add_argument("--dev_refname", help="reference fname for dev set")
-    parser.add_argument("--test_refname", help="reference fname for test set")
-    parser.add_argument("--dev_ofname", help="output prediction for dev set")
-    parser.add_argument("--test_ofname", help="output prediction for test set")
-    parser.add_argument("--cnn_cnt", type=int, default=0, help="CNN-Cnt model or not, default is 0")
-    args = parser.parse_args()
-    
-    print "loading data...",
-    x = cPickle.load(open(args.dataset,"rb"))
-    revs, wordvecs, max_l = x[0], x[1], x[2]
-    max_l = 40
-    print "data loaded!"
-    if args.cnn_cnt == 0:
-        cnn_cnt = False
-    else:
-        cnn_cnt = True
-    tuning_cnn(revs, wordvecs, max_l, args.dev_refname, args.test_refname, args.dev_ofname, args.test_ofname, cnn_cnt)
-    
-    logger.info('end logging')
